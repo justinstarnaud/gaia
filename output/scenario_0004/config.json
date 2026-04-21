@@ -1,0 +1,33 @@
+{
+  "scenario_id": "scenario_0004",
+  "scenario_type": "utility_only",
+  "dam": {
+    "dam_type": "homogeneous",
+    "height_m": 18.596959854212585,
+    "crest_width_m": 7.170946871021217,
+    "upstream_slope": 3.263650239801926,
+    "downstream_slope": 2.811692767009607
+  },
+  "crack": null,
+  "utility": {
+    "utility_type": "concrete_conduit",
+    "depth_m": 21.985299767592718,
+    "diameter_m": 0.82347173791823,
+    "x_position_m": 8.471008082765822
+  },
+  "saturation_states": [
+    {
+      "state_id": 0,
+      "phreatic_level": 0.3
+    },
+    {
+      "state_id": 1,
+      "phreatic_level": 0.6
+    },
+    {
+      "state_id": 2,
+      "phreatic_level": 0.85
+    }
+  ],
+  "seed": 45
+}

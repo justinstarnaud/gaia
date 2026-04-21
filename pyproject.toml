@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "damforge"
+version = "0.1.0"
+description = "Synthetic embankment dam dataset generator for ERT/seismic crack detection"
+requires-python = ">=3.12"
+dependencies = [
+    # NOTE: pygimli has no macOS ARM wheel on PyPI.
+    # Install it via conda BEFORE running `make setup`:
+    #   conda install -c gimli -c conda-forge pygimli
+    # Then uv will find it through the active conda env.
+    "numpy>=1.24",
+    "matplotlib>=3.7",
+    "tqdm>=4.65",
+    "scipy>=1.10",
+    "pydantic>=2",
+    "shapely>=2",
+]
+
+# ---------------------------------------------------------------------------
+# Extras  (--all-extras)
+# ---------------------------------------------------------------------------
+[project.optional-dependencies]
+viz = [
+    "ipywidgets>=8.0",
+    "jupyter>=1.0",
+]
+
+# ---------------------------------------------------------------------------
+# Dependency groups  (--all-groups, PEP 735 / uv native)
+# ---------------------------------------------------------------------------
+[dependency-groups]
+dev = [
+    "pytest>=7",
+    "pytest-cov>=4",
+    "pre-commit>=3",
+]
+
+# ---------------------------------------------------------------------------
+# Entry points
+# ---------------------------------------------------------------------------
+[project.scripts]
+damforge = "damforge.generate:_cli"
+
+# ---------------------------------------------------------------------------
+# Tool config
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+log_cli = true
+log_cli_level = "WARNING"
+
+[tool.coverage.run]
+source = ["damforge"]
+omit = ["tests/*"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["damforge"]

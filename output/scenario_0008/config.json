@@ -1,0 +1,40 @@
+{
+  "scenario_id": "scenario_0008",
+  "scenario_type": "crack_and_utility",
+  "dam": {
+    "dam_type": "zoned",
+    "height_m": 15.442812884142043,
+    "crest_width_m": 7.559303561018394,
+    "upstream_slope": 2.891950211964187,
+    "downstream_slope": 2.6236992856766133
+  },
+  "crack": {
+    "orientation": "transverse",
+    "width_mm": 49.808951849992624,
+    "depth_top_m": 3.038286998707242,
+    "depth_bottom_m": 4.1864343790511445,
+    "fill": "water",
+    "x_offset_m": 0.029736712608380254
+  },
+  "utility": {
+    "utility_type": "plastic_pipe",
+    "depth_m": 18.3210435902734,
+    "diameter_m": 0.9141140554571944,
+    "x_position_m": -9.054361670753384
+  },
+  "saturation_states": [
+    {
+      "state_id": 0,
+      "phreatic_level": 0.3
+    },
+    {
+      "state_id": 1,
+      "phreatic_level": 0.6
+    },
+    {
+      "state_id": 2,
+      "phreatic_level": 0.85
+    }
+  ],
+  "seed": 49
+}
