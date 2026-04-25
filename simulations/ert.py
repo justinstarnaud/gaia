@@ -29,13 +29,9 @@ class ERTModel(BaseGeophysicalModel):
         print(f"Initial data points: {self.data.size()}")
 
         data = self.data
-        # Remove negative or zero apparent resistivity
         data.markInvalid(data['rhoa'] <= 0)
-        # Also remove negative resistance
         data.markInvalid(data['r'] <= 0)
-        # Remove unreasonably high values
         data.markInvalid(data['rhoa'] > 1e6)
-        # Remove high error
         data.markInvalid(data['err'] > 0.5)
 
         data.removeInvalid()
