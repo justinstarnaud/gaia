@@ -162,10 +162,7 @@ def _sample_utility(rng: np.random.Generator, dam_cfg: DamConfig) -> UtilityConf
 
 
 def _default_saturation_states(gen_cfg: GenerationConfig) -> list[SaturationState]:
-    return [
-        SaturationState(state_id=i, phreatic_level=frac)
-        for i, frac in enumerate(gen_cfg.phreatic_fractions)
-    ]
+    return [SaturationState(state_id=2, phreatic_level=1.0)]
 
 
 def sample_scenario(

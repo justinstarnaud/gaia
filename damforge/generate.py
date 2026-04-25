@@ -56,8 +56,13 @@ def _plan_scenarios(n: int) -> list[tuple[ScenarioType, DamType]]:
 # ---------------------------------------------------------------------------
 
 
-def _run_scenario(cfg: ScenarioConfig, output_dir: Path) -> Path:
-    """Run the full pipeline for one scenario and return its output dir."""
+def _run_scenario(cfg: ScenarioConfig):
+    """Run the full pipeline for one scenario, returning in-memory artifacts.
+
+    Returns
+    -------
+    tuple of (cfg, mesh, labels, per_state).
+    """
     rng = np.random.default_rng(cfg.seed)
 
     geometry = assemble_scenario_geometry(cfg, DEFAULTS.mesh)
@@ -90,6 +95,10 @@ def _run_scenario(cfg: ScenarioConfig, output_dir: Path) -> Path:
             f"Validation failed for {cfg.scenario_id}: {report.errors}"
         )
 
+    return cfg, mesh, labels, per_state
+
+
+def _persist_scenario(output_dir: Path, cfg, mesh, labels, per_state) -> Path:
     scenario_dir = save_scenario(output_dir, cfg, mesh, labels, per_state)
     triptych(scenario_dir)
     saturation_trajectory(scenario_dir)
@@ -103,27 +112,37 @@ def _run_scenario(cfg: ScenarioConfig, output_dir: Path) -> Path:
 
 def generate_dataset(
     n_scenarios: int,
-    output_dir: Path,
+    output_dir: Path | None = None,
     seed: int = 42,
-) -> list[Path]:
+    write: bool = True,
+):
     """Generate a full labelled dataset.
 
     Parameters
     ----------
     n_scenarios : int
-    output_dir : Path
+    output_dir : Path | None
+        Required when `write=True`; ignored when `write=False`.
     seed : int
         Base seed. Per-scenario seeds are `seed + i`.
+    write : bool
+        If True (default), persist each scenario to `output_dir` and return
+        the list of written scenario directories. If False, return a list of
+        in-memory `(cfg, mesh, labels, per_state)` tuples.
 
     Returns
     -------
-    list[Path]
-        Scenario directories successfully written.
+    list[Path] when write=True, else list[tuple[ScenarioConfig, pg.Mesh, np.ndarray, list]]
     """
-    output_dir.mkdir(parents=True, exist_ok=True)
+    if write:
+        if output_dir is None:
+            raise ValueError("output_dir is required when write=True")
+        output_dir.mkdir(parents=True, exist_ok=True)
+
     plan = _plan_scenarios(n_scenarios)
 
     written: list[Path] = []
+    results: list = []
     for i, (scenario_type, dam_type) in enumerate(tqdm(plan, desc="scenarios")):
         scenario_id = f"scenario_{i + 1:04d}"
         try:
@@ -134,18 +153,25 @@ def generate_dataset(
                 seed=seed + i,
                 gen_cfg=DEFAULTS.generation,
             )
-            written.append(_run_scenario(cfg, output_dir))
+            artifacts = _run_scenario(cfg)
+            if write:
+                written.append(_persist_scenario(output_dir, *artifacts))
+            else:
+                results.append(artifacts)
         except Exception as exc:  # noqa: BLE001 — we must skip & log, not crash
             logger.exception("Scenario %s failed: %s", scenario_id, exc)
 
-    if written:
-        sample = written[: min(50, len(written))]
-        property_space(sample, output_dir / "property_space.png")
+    if write:
+        if written:
+            sample = written[: min(50, len(written))]
+            property_space(sample, output_dir / "property_space.png")
+        logger.info(
+            "Generated %d/%d scenarios in %s", len(written), n_scenarios, output_dir
+        )
+        return written
 
-    logger.info(
-        "Generated %d/%d scenarios in %s", len(written), n_scenarios, output_dir
-    )
-    return written
+    logger.info("Generated %d/%d scenarios (in-memory)", len(results), n_scenarios)
+    return results
 
 
 # ---------------------------------------------------------------------------
