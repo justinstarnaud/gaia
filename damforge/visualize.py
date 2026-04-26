@@ -40,11 +40,12 @@ def _outline_anomalies(ax, cfg) -> None:
 
 
 def triptych(scenario_dir: Path) -> Path:
-    """Render the 3-panel plot (resistivity | velocity | labels) for state_1."""
+    """Render the 3-panel plot (resistivity | velocity | labels) for the last state."""
     cfg = load_config(scenario_dir)
     mesh = load_mesh(scenario_dir)
     labels = load_labels(scenario_dir)
-    props = load_state(scenario_dir, state_id=1)
+    state_id = cfg.saturation_states[-1].state_id
+    props = load_state(scenario_dir, state_id=state_id)
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
@@ -52,14 +53,14 @@ def triptych(scenario_dir: Path) -> Path:
         axes[0], mesh, props.resistivity_ohm_m,
         cMap="viridis", logScale=True, label="Resistivity [Ω·m]",
     )
-    axes[0].set_title("Resistivity (state 1)")
+    axes[0].set_title(f"Resistivity (state {state_id})")
     _outline_anomalies(axes[0], cfg)
 
     _draw_mesh_field(
         axes[1], mesh, props.velocity_m_s,
         cMap="magma", label="Velocity [m/s]",
     )
-    axes[1].set_title("Velocity (state 1)")
+    axes[1].set_title(f"Velocity (state {state_id})")
     _outline_anomalies(axes[1], cfg)
 
     _draw_mesh_field(
@@ -126,8 +127,10 @@ def saturation_trajectory(scenario_dir: Path) -> Path:
 
 
 def property_space(
-    scenario_dirs: list[Path], output_path: Path, state_id: int = 1
+    scenario_dirs: list[Path], output_path: Path, state_id: int | None = None
 ) -> Path:
+    if state_id is None:
+        state_id = load_config(scenario_dirs[0]).saturation_states[-1].state_id
     """Dataset-level scatter of (log ρ, V) across all scenarios, by label."""
     rho_by_label: dict[int, list[float]] = {}
     v_by_label: dict[int, list[float]] = {}

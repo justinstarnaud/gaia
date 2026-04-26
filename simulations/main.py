@@ -5,7 +5,7 @@ from simulations.ert import ERTModel
 from simulations.seismic import SeismicModel
 
 if __name__ == "__main__":
-    scenarios = generate_dataset(n_scenarios=1, output_dir=None, seed=42)
+    scenarios = generate_dataset(n_scenarios=1, output_dir=None, seed=42, write=False)
 
     for i, (cfg, mesh, labels, per_state) in enumerate(scenarios):
         state: PropertyArrays = per_state[-1]

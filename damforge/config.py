@@ -171,8 +171,8 @@ class ScenarioConfig(BaseModel):
         elif self.scenario_type == ScenarioType.CRACK_AND_UTILITY:
             if self.crack is None or self.utility is None:
                 raise ValueError("CRACK_AND_UTILITY requires both crack and utility")
-        if len(self.saturation_states) != 3:
-            raise ValueError("exactly 3 saturation states required")
+        if len(self.saturation_states) < 1:
+            raise ValueError("at least 1 saturation state required")
         return self
 
 
@@ -197,7 +197,7 @@ class GenerationConfig(BaseModel):
 
     jitter_fraction: float = 0.15
     archie_saturation: float = 0.9
-    phreatic_fractions: tuple[float, float, float] = (0.30, 0.60, 0.85)
+    phreatic_fractions: tuple[float, ...] = (1.0,)
 
 
 # ---------------------------------------------------------------------------
