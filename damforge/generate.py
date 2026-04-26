@@ -126,13 +126,11 @@ def generate_dataset(
     seed : int
         Base seed. Per-scenario seeds are `seed + i`.
     write : bool
-        If True (default), persist each scenario to `output_dir` and return
-        the list of written scenario directories. If False, return a list of
-        in-memory `(cfg, mesh, labels, per_state)` tuples.
+        Whether to persist scenarios to disk in addition to returning them.
 
     Returns
     -------
-    list[Path] when write=True, else list[tuple[ScenarioConfig, pg.Mesh, np.ndarray, list]]
+    list[tuple[ScenarioConfig, pg.Mesh, np.ndarray, list]]
     """
     if write:
         if output_dir is None:
@@ -141,8 +139,8 @@ def generate_dataset(
 
     plan = _plan_scenarios(n_scenarios)
 
-    written: list[Path] = []
     results: list = []
+    written: list[Path] = []
     for i, (scenario_type, dam_type) in enumerate(tqdm(plan, desc="scenarios")):
         scenario_id = f"scenario_{i + 1:04d}"
         try:
@@ -154,10 +152,9 @@ def generate_dataset(
                 gen_cfg=DEFAULTS.generation,
             )
             artifacts = _run_scenario(cfg)
+            results.append(artifacts)
             if write:
                 written.append(_persist_scenario(output_dir, *artifacts))
-            else:
-                results.append(artifacts)
         except Exception as exc:  # noqa: BLE001 — we must skip & log, not crash
             logger.exception("Scenario %s failed: %s", scenario_id, exc)
 
@@ -166,11 +163,11 @@ def generate_dataset(
             sample = written[: min(50, len(written))]
             property_space(sample, output_dir / "property_space.png")
         logger.info(
-            "Generated %d/%d scenarios in %s", len(written), n_scenarios, output_dir
+            "Generated %d/%d scenarios in %s", len(results), n_scenarios, output_dir
         )
-        return written
+    else:
+        logger.info("Generated %d/%d scenarios (in-memory)", len(results), n_scenarios)
 
-    logger.info("Generated %d/%d scenarios (in-memory)", len(results), n_scenarios)
     return results
 
 
