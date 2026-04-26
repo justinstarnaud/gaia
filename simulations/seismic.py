@@ -41,10 +41,18 @@ class SeismicModel(BaseGeophysicalModel):
     def invert(self, v_top=500, v_bottom=3000, lam=10):
         self.manager = tt.TravelTimeManager(self.data)
 
+        # Cap inversion paraDomain depth at the actual modelled domain (dam +
+        # foundation). Otherwise PyGIMLi sizes paraDepth from sensor span and
+        # the image extends well below the simulation mesh.
+        y_min = min(n.y() for n in self.mesh.nodes())
+        y_max = max(n.y() for n in self.mesh.nodes())
+        para_depth = float(y_max - y_min)
+
         self.result = self.manager.invert(
             self.data,
             secNodes=2,             # secondary nodes, same as forward
             paraMaxCellSize=1.0,    # inversion mesh cell size (tune for granularity)
+            paraDepth=para_depth,   # cap inversion mesh at true domain bottom
             maxIter=12,
             lam=lam,
             # gradient starting model: velocity increases with depth

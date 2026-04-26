@@ -46,12 +46,15 @@ class ERTModel(BaseGeophysicalModel):
     def invert(self, lam=20, max_iter=10):
         self.manager = ert.ERTManager(self.data)
 
-        # Create inversion mesh from electrode positions
-        inv_mesh = self.manager.createMesh(self.data, quality=34, maxCellArea=0.5)
+        y_min = min(n.y() for n in self.mesh.nodes())
+        y_max = max(n.y() for n in self.mesh.nodes())
+        para_depth = float(y_max - y_min)
 
         self.result = self.manager.invert(
             self.data,
-            mesh=inv_mesh,
+            quality=34,
+            maxCellArea=0.5,
+            paraDepth=para_depth,
             lam=lam,
             maxIter=max_iter,
             verbose=True
