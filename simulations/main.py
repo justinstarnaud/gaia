@@ -10,8 +10,8 @@ if __name__ == "__main__":
     for i, (cfg, mesh, labels, per_state) in enumerate(scenarios):
         state: PropertyArrays = per_state[-1]
         models: list[BaseGeophysicalModel] = [
-            ERTModel(mesh, state.resistivity_ohm_m), 
-            # SeismicModel(mesh, state.velocity_m_s)
+            # ERTModel(mesh, state.resistivity_ohm_m, n_sensors=48), 
+            SeismicModel(mesh, state.velocity_m_s, n_sensors=48)
             ]
 
         for model in models:

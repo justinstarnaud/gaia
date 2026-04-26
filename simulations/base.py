@@ -19,11 +19,23 @@ class BaseGeophysicalModel(ABC):
     def get_surface_sensors(self):
         all_nodes = np.array([[n.x(), n.y()] for n in self.mesh.nodes()])
         y_max = all_nodes[:, 1].max()
-        tol = (y_max - all_nodes[:, 1].min()) * 0.01
+        tol = 0.1  # fixed small tolerance in mesh units, not relative
+        
+        # Get true crest nodes only
         top_nodes = all_nodes[np.abs(all_nodes[:, 1] - y_max) < tol]
         top_nodes = top_nodes[np.argsort(top_nodes[:, 0])]
-        indices = np.linspace(0, len(top_nodes) - 1, self.n_sensors, dtype=int)
-        return top_nodes[indices]
+        
+        # Uniform spatial spacing, not index spacing
+        x_min, x_max = top_nodes[:, 0].min(), top_nodes[:, 0].max()
+        x_targets = np.linspace(x_min, x_max, self.n_sensors)
+        
+        # Snap each target x to nearest actual node
+        sensors = []
+        for xt in x_targets:
+            idx = np.argmin(np.abs(top_nodes[:, 0] - xt))
+            sensors.append(top_nodes[idx])
+        
+        return np.array(sensors)
 
     @abstractmethod
     def forward(self, model):
