@@ -45,7 +45,7 @@ class SeismicModel(BaseGeophysicalModel):
             self.data,
             secNodes=2,             # secondary nodes, same as forward
             paraMaxCellSize=1.0,    # inversion mesh cell size (tune for granularity)
-            maxIter=20,
+            maxIter=12,
             lam=lam,
             # gradient starting model: velocity increases with depth
             useGradient=True,

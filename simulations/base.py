@@ -18,24 +18,44 @@ class BaseGeophysicalModel(ABC):
     # ── Sensor extraction (shared by all surface methods) ─────────────────────
     def get_surface_sensors(self):
         all_nodes = np.array([[n.x(), n.y()] for n in self.mesh.nodes()])
-        y_max = all_nodes[:, 1].max()
-        tol = 0.1  # fixed small tolerance in mesh units, not relative
         
-        # Get true crest nodes only
-        top_nodes = all_nodes[np.abs(all_nodes[:, 1] - y_max) < tol]
-        top_nodes = top_nodes[np.argsort(top_nodes[:, 0])]
+        # Get boundary nodes only (nodes on the outer edge of the mesh)
+        boundary_nodes = []
+        for bound in self.mesh.boundaries():
+            if bound.outside():   # only exterior boundary edges
+                for n in range(bound.nodeCount()):
+                    node = bound.node(n)
+                    boundary_nodes.append([node.x(), node.y()])
         
-        # Uniform spatial spacing, not index spacing
-        x_min, x_max = top_nodes[:, 0].min(), top_nodes[:, 0].max()
-        x_targets = np.linspace(x_min, x_max, self.n_sensors)
+        boundary_nodes = np.unique(boundary_nodes, axis=0)
         
-        # Snap each target x to nearest actual node
+        # Exclude the bottom (foundation) — keep only dam surface
+        y_min = all_nodes[:, 1].min()
+        x_min = all_nodes[:, 0].min()
+        x_max = all_nodes[:, 0].max()
+        
+        surface_nodes = boundary_nodes[
+            (boundary_nodes[:, 1] > y_min + 0.5) &  # not the base
+            (boundary_nodes[:, 0] > x_min + 0.5) &  # not left wall
+            (boundary_nodes[:, 0] < x_max - 0.5)     # not right wall
+        ]
+        
+        surface_nodes = surface_nodes[np.argsort(surface_nodes[:, 0])]
+        print(f"Available surface nodes: {len(surface_nodes)}")
+        
+        # Pick n_sensors evenly spaced from those
+        x_targets = np.linspace(surface_nodes[:,0].min(), 
+                                surface_nodes[:,0].max(), 
+                                self.n_sensors)
         sensors = []
         for xt in x_targets:
-            idx = np.argmin(np.abs(top_nodes[:, 0] - xt))
-            sensors.append(top_nodes[idx])
+            idx = np.argmin(np.abs(surface_nodes[:, 0] - xt))
+            sensors.append(surface_nodes[idx])
         
-        return np.array(sensors)
+        _, unique_idx = np.unique([s[0] for s in sensors], return_index=True)
+        sensors = np.array(sensors)[sorted(unique_idx)]
+        print(f"Final sensor count: {len(sensors)}")
+        return sensors
 
     @abstractmethod
     def forward(self, model):
