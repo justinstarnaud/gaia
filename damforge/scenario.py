@@ -36,30 +36,15 @@ class ScenarioGeometry:
 
 
 def build_crack_polygon(crack: CrackConfig, dam_cfg: DamConfig) -> Polygon:
-    """Build a thin rectangle polygon representing a crack.
-
-    The crack is always drawn as a vertical rectangle in the (x, y) plane;
-    "transverse" vs "longitudinal" is a labelling distinction for downstream
-    consumers (the 2-D cross-section looks the same either way).
-
-    Parameters
-    ----------
-    crack : CrackConfig
-    dam_cfg : DamConfig
-
-    Returns
-    -------
-    Polygon
-    """
-    width_m = crack.width_mm / 1000.0
+    """Build a tilted parallelogram polygon for a longitudinal crack."""
+    half = crack.aperture_mm / 1000.0 / 2.0
     x = crack.x_offset_m
-    y_top = -crack.depth_top_m
-    y_bot = -crack.depth_bottom_m
-    half = width_m / 2.0
+    y_top, y_bot = -crack.depth_top_m, -crack.depth_bottom_m
+    shear = (crack.depth_bottom_m - crack.depth_top_m) * np.tan(np.deg2rad(crack.tilt_deg))
     return Polygon(
         [
-            (x - half, y_top),
-            (x + half, y_top),
+            (x - half + shear, y_top),
+            (x + half + shear, y_top),
             (x + half, y_bot),
             (x - half, y_bot),
         ]
@@ -114,27 +99,44 @@ def _sample_dam(rng: np.random.Generator, dam_type: DamType) -> DamConfig:
 
 
 def _sample_crack(rng: np.random.Generator, dam_cfg: DamConfig) -> CrackConfig:
-    depth_top = float(rng.uniform(0.0, max(0.1, dam_cfg.height_m * 0.3)))
-    depth_bottom = float(rng.uniform(depth_top + 1.0, dam_cfg.height_m - 0.5))
-    # Keep the crack fully inside the clay core (for zoned/puddle dams) or
-    # within the central portion of the embankment (for homogeneous). A crack
-    # that straddles the core/shell boundary produces a degenerate PLC that
-    # PyGIMLi can hang on during triangulation.
+    """Sample a tilted, water-filled longitudinal crack inside the dam core."""
+    # Vertical extent (top in shallow third, ≥4 m span, capped at ~50 ft).
+    depth_top = float(rng.uniform(0.0, max(0.1, dam_cfg.height_m * 0.2)))
+    max_bottom = min(dam_cfg.height_m - 0.5, 15.5)
+    depth_bottom = float(rng.uniform(min(depth_top + 4.0, max_bottom), max_bottom))
+
+    # Aperture biased to upper half of the realistic 1–300 mm range so ERT/
+    # seismic resolve it. Half-width in metres for geometry calculations.
+    aperture_mm = float(rng.uniform(50.0, 300.0))
+    half = aperture_mm / 1000.0 / 2.0
+
+    # Lateral budget: keep the crack inside the clay core (zoned/puddle) or
+    # the central embankment band (homogeneous) so the PLC stays well-formed.
     geom = DAM_TYPE_GEOMETRIES[dam_cfg.dam_type]
     if geom.has_core:
-        core_top_half = dam_cfg.crest_width_m * geom.core_crest_ratio / 2.0
-        max_offset = max(core_top_half - 0.1, 0.05)
+        max_half = max(dam_cfg.crest_width_m * geom.core_crest_ratio / 2.0 - 0.1, 0.05)
     else:
-        max_offset = dam_cfg.crest_width_m * 0.25
+        max_half = dam_cfg.crest_width_m * 0.25
+
+    # Tilt up to 15°, but capped further so the sheared parallelogram fits
+    # inside [-max_half, +max_half] when x_offset = 0.
+    depth_span = depth_bottom - depth_top
+    max_shear = max(max_half - half - 0.05, 0.0)
+    tilt_cap = min(15.0, float(np.rad2deg(np.arctan(max_shear / depth_span))))
+    tilt_deg = float(rng.uniform(0.0, tilt_cap)) * float(rng.choice([-1.0, 1.0]))
+
+    # Position bottom edge so the entire parallelogram stays inside the core.
+    shear = abs(depth_span * np.tan(np.deg2rad(tilt_deg)))
+    slack = max_half - half - shear
+    x_offset = float(rng.uniform(-slack, slack)) if slack > 0 else 0.0
+
     return CrackConfig(
-        orientation=str(rng.choice(["transverse", "longitudinal"])),  # type: ignore[arg-type]
-        # Floor raised from 2 mm → 5 mm: Triangle struggles to mesh thinner
-        # polygons at the chosen area constraints and hangs on edge cases.
-        width_mm=float(rng.uniform(5.0, 50.0)),
+        aperture_mm=aperture_mm,
         depth_top_m=depth_top,
         depth_bottom_m=depth_bottom,
-        fill=str(rng.choice(["air", "water"])),  # type: ignore[arg-type]
-        x_offset_m=float(rng.uniform(-max_offset, max_offset)),
+        tilt_deg=tilt_deg,
+        fill="water",
+        x_offset_m=x_offset,
     )
 
 

@@ -39,8 +39,8 @@ def _states() -> list[SaturationState]:
 
 def _crack() -> CrackConfig:
     return CrackConfig(
-        orientation="transverse", width_mm=10.0, depth_top_m=1.0,
-        depth_bottom_m=8.0, fill="air", x_offset_m=0.5,
+        aperture_mm=100.0, depth_top_m=1.0, depth_bottom_m=8.0,
+        tilt_deg=10.0, fill="water", x_offset_m=0.5,
     )
 
 
@@ -88,9 +88,23 @@ def test_requires_three_saturation_states():
 def test_crack_depth_order():
     with pytest.raises(ValidationError):
         CrackConfig(
-            orientation="transverse", width_mm=10.0, depth_top_m=5.0,
-            depth_bottom_m=3.0, fill="air", x_offset_m=0.0,
+            aperture_mm=10.0, depth_top_m=5.0, depth_bottom_m=3.0,
+            fill="water", x_offset_m=0.0,
         )
+
+
+def test_crack_aperture_bounds():
+    for ap in (1.0, 300.0):
+        CrackConfig(
+            aperture_mm=ap, depth_top_m=0.0, depth_bottom_m=2.0,
+            fill="water", x_offset_m=0.0,
+        )
+    for ap in (0.5, 301.0):
+        with pytest.raises(ValidationError):
+            CrackConfig(
+                aperture_mm=ap, depth_top_m=0.0, depth_bottom_m=2.0,
+                fill="water", x_offset_m=0.0,
+            )
 
 
 def test_reference_materials_within_bounds():

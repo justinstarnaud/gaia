@@ -13,8 +13,9 @@ from damforge.config import (
     Label,
     ScenarioType,
 )
+from damforge.config import CrackConfig, DamConfig
 from damforge.properties import apply_saturation, assign_base_properties
-from damforge.scenario import sample_scenario
+from damforge.scenario import build_crack_polygon, sample_scenario
 
 
 def test_sample_scenario_consistency():
@@ -101,3 +102,38 @@ def test_air_crack_above_phreatic_unchanged():
     )
     crack_mask = labels == Label.CRACK_AIR.value
     assert np.allclose(sat.resistivity_ohm_m[crack_mask], base.resistivity_ohm_m[crack_mask])
+
+
+def _dam_for_polygon() -> DamConfig:
+    return DamConfig(
+        dam_type=DamType.ZONED, height_m=15.0, crest_width_m=6.0,
+        upstream_slope=3.0, downstream_slope=2.5,
+    )
+
+
+def test_tilted_crack_top_offset_from_bottom():
+    dam = _dam_for_polygon()
+    poly = build_crack_polygon(
+        CrackConfig(aperture_mm=100.0, depth_top_m=1.0, depth_bottom_m=6.0,
+                    tilt_deg=10.0, fill="water", x_offset_m=0.0),
+        dam,
+    )
+    coords = list(poly.exterior.coords)
+    # Polygon order: top-left, top-right, bottom-right, bottom-left
+    top_centre_x = (coords[0][0] + coords[1][0]) / 2
+    bot_centre_x = (coords[2][0] + coords[3][0]) / 2
+    expected_shear = 5.0 * np.tan(np.deg2rad(10.0))
+    assert pytest.approx(top_centre_x - bot_centre_x, rel=1e-6) == expected_shear
+
+
+def test_sampled_cracks_stay_inside_core():
+    for seed in range(40):
+        cfg = sample_scenario(
+            scenario_id="s", scenario_type=ScenarioType.CRACK_ONLY,
+            dam_type=DamType.ZONED, seed=seed, gen_cfg=DEFAULTS.generation,
+        )
+        assert cfg.crack is not None and cfg.crack.fill == "water"
+        poly = build_crack_polygon(cfg.crack, cfg.dam)
+        x_min, _, x_max, _ = poly.bounds
+        max_half = cfg.dam.crest_width_m * 0.45 / 2.0
+        assert -max_half <= x_min and x_max <= max_half

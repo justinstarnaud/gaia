@@ -117,12 +117,16 @@ class DamConfig(BaseModel):
 
 
 class CrackConfig(BaseModel):
-    """A single crack inside the dam body."""
+    """A longitudinal vertical crack piercing the 2-D section.
 
-    orientation: Literal["transverse", "longitudinal"]
-    width_mm: float = Field(ge=2, le=50)
+    Rendered as a parallelogram: width = ``aperture_mm`` / 1000, sheared by
+    ``tilt_deg`` from vertical (positive tilts the top toward +x).
+    """
+
+    aperture_mm: float = Field(ge=1, le=300)
     depth_top_m: float = Field(ge=0)
-    depth_bottom_m: float = Field(gt=0)
+    depth_bottom_m: float = Field(gt=0, le=20)
+    tilt_deg: float = Field(default=0.0, ge=-60.0, le=60.0)
     fill: Literal["air", "water"]
     x_offset_m: float
 
@@ -224,11 +228,11 @@ DAM_TYPE_GEOMETRIES: dict[DamType, DamTypeGeometry] = {
 
 
 _REFERENCE_MATERIALS = MaterialLibrary(
-    clay_core=MaterialProperties(resistivity_ohm_m=15, velocity_m_s=1600, density_kg_m3=2000),
-    shell_gravel=MaterialProperties(resistivity_ohm_m=250, velocity_m_s=450, density_kg_m3=1800),
+    clay_core=MaterialProperties(resistivity_ohm_m=50, velocity_m_s=1600, density_kg_m3=2000),
+    shell_gravel=MaterialProperties(resistivity_ohm_m=500, velocity_m_s=450, density_kg_m3=1800),
     foundation=MaterialProperties(resistivity_ohm_m=25, velocity_m_s=1000, density_kg_m3=1900),
     crack_air=MaterialProperties(resistivity_ohm_m=20000, velocity_m_s=200, density_kg_m3=5),
-    crack_water=MaterialProperties(resistivity_ohm_m=15, velocity_m_s=1450, density_kg_m3=1000),
+    crack_water=MaterialProperties(resistivity_ohm_m=5, velocity_m_s=1450, density_kg_m3=1000),
     plastic_pipe=MaterialProperties(resistivity_ohm_m=30000, velocity_m_s=2200, density_kg_m3=1000),
     concrete_conduit=MaterialProperties(resistivity_ohm_m=1000, velocity_m_s=3500, density_kg_m3=2300),
     metal_pipe=MaterialProperties(resistivity_ohm_m=0.005, velocity_m_s=5500, density_kg_m3=7800),
