@@ -85,6 +85,9 @@ class BaseGeophysicalModel(ABC):
             colorBar=True,
             label="Resistivity (Ω·m)",
         )
+        ax, cb = self.manager.showResult()
+        ax.set_ylim(-25, 0)   # y is negative-downward in pyGIMLi
+        ax.figure.tight_layout()
         fig = ax.get_figure()
         fig.savefig(path, dpi=150, bbox_inches='tight')
         plt.close(fig)

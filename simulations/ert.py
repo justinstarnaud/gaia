@@ -46,17 +46,16 @@ class ERTModel(BaseGeophysicalModel):
     def invert(self, lam=20, max_iter=10):
         self.manager = ert.ERTManager(self.data)
 
-        y_min = min(n.y() for n in self.mesh.nodes())
-        y_max = max(n.y() for n in self.mesh.nodes())
-        para_depth = float(y_max - y_min)
+        inv_mesh = self.manager.createMesh(self.data, 
+                                           quality=34, 
+                                           maxCellArea=0.1,
+                                           paraDepth=10)
 
         self.result = self.manager.invert(
             self.data,
-            quality=34,
-            maxCellArea=0.5,
-            paraDepth=para_depth,
+            mesh=inv_mesh,
             lam=lam,
             maxIter=max_iter,
             verbose=True
         )
-        return self.result, self.manager
+        return self.result, self.manager 
