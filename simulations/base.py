@@ -15,43 +15,51 @@ class BaseGeophysicalModel(ABC):
         self.result = None
         self.manager = None
 
-    # ── Sensor extraction (shared by all surface methods) ─────────────────────
-    def get_surface_sensors(self):
+    def get_surface_sensors(self, x_start=-35, x_end=35, y_min_surface=None):
+        """
+        x_start, x_end   : explicit x limits for sensor placement (m)
+        y_min_surface    : minimum y to be considered "surface" (excludes ground under dam)
+        """
         all_nodes = np.array([[n.x(), n.y()] for n in self.mesh.nodes()])
-        
-        # Get boundary nodes only (nodes on the outer edge of the mesh)
+
+        # Get boundary nodes only
         boundary_nodes = []
         for bound in self.mesh.boundaries():
-            if bound.outside():   # only exterior boundary edges
+            if bound.outside():
                 for n in range(bound.nodeCount()):
                     node = bound.node(n)
                     boundary_nodes.append([node.x(), node.y()])
-        
         boundary_nodes = np.unique(boundary_nodes, axis=0)
-        
-        # Exclude the bottom (foundation) — keep only dam surface
-        y_min = all_nodes[:, 1].min()
-        x_min = all_nodes[:, 0].min()
-        x_max = all_nodes[:, 0].max()
-        
+
+        # --- Fallbacks if not specified ---
+        mesh_y_min = all_nodes[:, 1].min()
+        mesh_x_min = all_nodes[:, 0].min()
+        mesh_x_max = all_nodes[:, 0].max()
+
+        if x_start is None:
+            x_start = mesh_x_min + 0.5
+        if x_end is None:
+            x_end = mesh_x_max - 0.5
+        if y_min_surface is None:
+            y_min_surface = mesh_y_min + 0.5  # old behaviour
+
+        # --- Apply all three bounds explicitly ---
         surface_nodes = boundary_nodes[
-            (boundary_nodes[:, 1] > y_min + 0.5) &  # not the base
-            (boundary_nodes[:, 0] > x_min + 0.5) &  # not left wall
-            (boundary_nodes[:, 0] < x_max - 0.5)     # not right wall
+            (boundary_nodes[:, 1] > y_min_surface) &
+            (boundary_nodes[:, 0] >= x_start) &
+            (boundary_nodes[:, 0] <= x_end)
         ]
-        
+
         surface_nodes = surface_nodes[np.argsort(surface_nodes[:, 0])]
         print(f"Available surface nodes: {len(surface_nodes)}")
-        
-        # Pick n_sensors evenly spaced from those
-        x_targets = np.linspace(surface_nodes[:,0].min(), 
-                                surface_nodes[:,0].max(), 
-                                self.n_sensors)
+
+        # Pick n_sensors evenly spaced
+        x_targets = np.linspace(x_start, x_end, self.n_sensors)
         sensors = []
         for xt in x_targets:
             idx = np.argmin(np.abs(surface_nodes[:, 0] - xt))
             sensors.append(surface_nodes[idx])
-        
+
         _, unique_idx = np.unique([s[0] for s in sensors], return_index=True)
         sensors = np.array(sensors)[sorted(unique_idx)]
         print(f"Final sensor count: {len(sensors)}")
