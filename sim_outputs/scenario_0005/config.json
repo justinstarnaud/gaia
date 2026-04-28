@@ -1,0 +1,25 @@
+{
+  "scenario_id": "scenario_0005",
+  "scenario_type": "utility_only",
+  "dam": {
+    "dam_type": "zoned",
+    "height_m": 23.58406415035468,
+    "crest_width_m": 4.46336075927046,
+    "upstream_slope": 2.7725697559186377,
+    "downstream_slope": 2.621850482246133
+  },
+  "crack": null,
+  "utility": {
+    "utility_type": "plastic_pipe",
+    "depth_m": 26.471753450538568,
+    "diameter_m": 0.26795742955102125,
+    "x_position_m": 28.247457774395848
+  },
+  "saturation_states": [
+    {
+      "state_id": 2,
+      "phreatic_level": 1.0
+    }
+  ],
+  "seed": 46
+}

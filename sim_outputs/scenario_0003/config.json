@@ -1,0 +1,27 @@
+{
+  "scenario_id": "scenario_0003",
+  "scenario_type": "crack_only",
+  "dam": {
+    "dam_type": "puddle_core",
+    "height_m": 11.838482645108074,
+    "crest_width_m": 5.548678448636638,
+    "upstream_slope": 2.905770727821131,
+    "downstream_slope": 2.9691839481444218
+  },
+  "crack": {
+    "orientation": "transverse",
+    "width_mm": 20.208287703466283,
+    "depth_top_m": 0.5764765394333323,
+    "depth_bottom_m": 9.945382615050868,
+    "fill": "air",
+    "x_offset_m": 0.16168078984996637
+  },
+  "utility": null,
+  "saturation_states": [
+    {
+      "state_id": 2,
+      "phreatic_level": 1.0
+    }
+  ],
+  "seed": 44
+}
