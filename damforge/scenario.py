@@ -8,7 +8,6 @@ import numpy as np
 from shapely.geometry import Point, Polygon
 
 from damforge.config import (
-    DAM_TYPE_GEOMETRIES,
     CrackConfig,
     DamConfig,
     DamType,
@@ -36,17 +35,26 @@ class ScenarioGeometry:
 
 
 def build_crack_polygon(crack: CrackConfig, dam_cfg: DamConfig) -> Polygon:
-    """Build a tilted parallelogram polygon for a longitudinal crack."""
-    half = crack.aperture_mm / 1000.0 / 2.0
-    x = crack.x_offset_m
+    """Crack polygon anchored on the upstream face of the embankment.
+
+    The top-left vertex sits on the upstream face at ``depth_top_m``; the
+    crack extends inward by ``aperture_mm`` and downward to ``depth_bottom_m``,
+    with the bottom shifted further into the dam by ``tilt_deg``.
+    """
+    aperture = crack.aperture_mm / 1000.0
+    half_crest = dam_cfg.crest_width_m / 2.0
+    us = dam_cfg.upstream_slope
+    x_face_top = -half_crest - us * crack.depth_top_m
     y_top, y_bot = -crack.depth_top_m, -crack.depth_bottom_m
-    shear = (crack.depth_bottom_m - crack.depth_top_m) * np.tan(np.deg2rad(crack.tilt_deg))
+    inward = (crack.depth_bottom_m - crack.depth_top_m) * np.tan(
+        np.deg2rad(crack.tilt_deg)
+    )
     return Polygon(
         [
-            (x - half + shear, y_top),
-            (x + half + shear, y_top),
-            (x + half, y_bot),
-            (x - half, y_bot),
+            (x_face_top, y_top),
+            (x_face_top + aperture, y_top),
+            (x_face_top + aperture + inward, y_bot),
+            (x_face_top + inward, y_bot),
         ]
     )
 
@@ -99,36 +107,22 @@ def _sample_dam(rng: np.random.Generator, dam_type: DamType) -> DamConfig:
 
 
 def _sample_crack(rng: np.random.Generator, dam_cfg: DamConfig) -> CrackConfig:
-    """Sample a tilted, water-filled longitudinal crack inside the dam core."""
-    # Vertical extent (top in shallow third, ≥4 m span, capped at ~50 ft).
-    depth_top = float(rng.uniform(0.0, max(0.1, dam_cfg.height_m * 0.2)))
-    max_bottom = min(dam_cfg.height_m - 0.5, 15.5)
-    depth_bottom = float(rng.uniform(min(depth_top + 4.0, max_bottom), max_bottom))
-
-    # Aperture biased to upper half of the realistic 1–300 mm range so ERT/
-    # seismic resolve it. Half-width in metres for geometry calculations.
-    aperture_mm = float(rng.uniform(50.0, 300.0))
-    half = aperture_mm / 1000.0 / 2.0
-
-    # Lateral budget: keep the crack inside the clay core (zoned/puddle) or
-    # the central embankment band (homogeneous) so the PLC stays well-formed.
-    geom = DAM_TYPE_GEOMETRIES[dam_cfg.dam_type]
-    if geom.has_core:
-        max_half = max(dam_cfg.crest_width_m * geom.core_crest_ratio / 2.0 - 0.1, 0.05)
+    """Sample a water-filled longitudinal crack rooted on the upstream face."""
+    hard_max_bottom = min(dam_cfg.height_m - 0.5, 20.0)
+    depth_top_hi = max(0.0, hard_max_bottom - 4.0)
+    # Mix shallow-start (upper third) and mid-depth (seepage initiation behind
+    # the phreatic line) so the dataset spans realistic crack positions.
+    if rng.random() < 0.5:
+        depth_top = float(rng.uniform(0.0, min(dam_cfg.height_m * 0.2, depth_top_hi)))
     else:
-        max_half = dam_cfg.crest_width_m * 0.25
+        lo = min(dam_cfg.height_m * 0.4, depth_top_hi)
+        hi = min(dam_cfg.height_m * 0.7, depth_top_hi)
+        depth_top = float(rng.uniform(lo, hi)) if hi > lo else lo
+    max_bottom = min(hard_max_bottom, depth_top + 6.0)
+    depth_bottom = float(rng.uniform(depth_top + 4.0, max_bottom))
 
-    # Tilt up to 15°, but capped further so the sheared parallelogram fits
-    # inside [-max_half, +max_half] when x_offset = 0.
-    depth_span = depth_bottom - depth_top
-    max_shear = max(max_half - half - 0.05, 0.0)
-    tilt_cap = min(15.0, float(np.rad2deg(np.arctan(max_shear / depth_span))))
-    tilt_deg = float(rng.uniform(0.0, tilt_cap)) * float(rng.choice([-1.0, 1.0]))
-
-    # Position bottom edge so the entire parallelogram stays inside the core.
-    shear = abs(depth_span * np.tan(np.deg2rad(tilt_deg)))
-    slack = max_half - half - shear
-    x_offset = float(rng.uniform(-slack, slack)) if slack > 0 else 0.0
+    aperture_mm = float(rng.uniform(50.0, 300.0))
+    tilt_deg = float(rng.uniform(15.0, 60.0))
 
     return CrackConfig(
         aperture_mm=aperture_mm,
@@ -136,7 +130,6 @@ def _sample_crack(rng: np.random.Generator, dam_cfg: DamConfig) -> CrackConfig:
         depth_bottom_m=depth_bottom,
         tilt_deg=tilt_deg,
         fill="water",
-        x_offset_m=x_offset,
     )
 
 

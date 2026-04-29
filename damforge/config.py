@@ -117,18 +117,18 @@ class DamConfig(BaseModel):
 
 
 class CrackConfig(BaseModel):
-    """A longitudinal vertical crack piercing the 2-D section.
+    """A longitudinal crack rooted at the upstream face of the dam.
 
-    Rendered as a parallelogram: width = ``aperture_mm`` / 1000, sheared by
-    ``tilt_deg`` from vertical (positive tilts the top toward +x).
+    The crack's upstream edge lies on the upstream face; ``aperture_mm`` is
+    the inward extent at the top, and ``tilt_deg`` (>= 0) tilts the bottom
+    further into the dam.
     """
 
     aperture_mm: float = Field(ge=1, le=300)
     depth_top_m: float = Field(ge=0)
     depth_bottom_m: float = Field(gt=0, le=20)
-    tilt_deg: float = Field(default=0.0, ge=-60.0, le=60.0)
+    tilt_deg: float = Field(default=0.0, ge=0.0, le=60.0)
     fill: Literal["air", "water"]
-    x_offset_m: float
 
     @model_validator(mode="after")
     def _depth_order(self) -> "CrackConfig":
