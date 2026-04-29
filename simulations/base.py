@@ -3,6 +3,7 @@ import pygimli as pg
 import numpy as np
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
+from matplotlib.collections import PathCollection, PatchCollection
 
 
 class BaseGeophysicalModel(ABC):
@@ -94,6 +95,11 @@ class BaseGeophysicalModel(ABC):
             label="Resistivity (Ω·m)",
         )
         ax, cb = self.manager.showResult()
+        for c in list(ax.collections):
+            if isinstance(c, (PathCollection, PatchCollection)):
+                c.remove()
+        for line in list(ax.lines):
+            line.remove()
         ax.set_ylim(-25, 0)   # y is negative-downward in pyGIMLi
         ax.figure.tight_layout()
         fig = ax.get_figure()
